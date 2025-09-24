@@ -12,7 +12,6 @@ import StudentsManagement from './components/TeacherDashboard/StudentsManagement
 // import ProfileSettings from './components/TeacherDashboard/ProfileSettings';
 import TeacherLayout from './components/layout/TeacherLayout';
 
-import './app.css';
 import NotFound from './components/common/NotFound';
 import LiveClassroom from './components/VideoClassroom';
 // import LiveClassroomWrapper from './components/LiveClassroom';
