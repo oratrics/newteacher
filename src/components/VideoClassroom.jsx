@@ -1,4 +1,4 @@
-// LiveClassroom.jsx - OPTIMIZED WITH MEMORY LEAK FIXES AND DIRECT AGORA SCREEN SHARING
+// LiveClassroom.jsx - BUG FIXED WITH BACKEND API INTEGRATION
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -26,6 +26,36 @@ import {
   RotateCcw, Save, Trash2, Pen, Eraser, MoreHorizontal,
   Image, Camera, Volume2, VolumeX
 } from 'lucide-react';
+
+// =================== CONSTANTS ===================
+const baseUrl = 'https://backend.oratrics.in/' || window.location.origin + '/';
+
+const CONSTANTS = {
+  ROLES: {
+    TEACHER: 'teacher',
+    STUDENT: 'student'
+  },
+  PERMISSIONS: {
+    teacher: {
+      canMuteOthers: true,
+      canKickParticipants: true,
+      canRecord: true,
+      canScreenShare: true,
+      canUseWhiteboard: true,
+      canPromoteToHost: true,
+      canManageChat: true
+    },
+    student: {
+      canMuteOthers: false,
+      canKickParticipants: false,
+      canRecord: false,
+      canScreenShare: false,
+      canUseWhiteboard: false,
+      canPromoteToHost: false,
+      canManageChat: false
+    }
+  }
+};
 
 // =================== ERROR BOUNDARY ===================
 class ErrorBoundary extends React.Component {
@@ -64,34 +94,6 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
-
-// =================== CONSTANTS ===================
-const CONSTANTS = {
-  ROLES: {
-    TEACHER: 'teacher',
-    STUDENT: 'student'
-  },
-  PERMISSIONS: {
-    teacher: {
-      canMuteOthers: true,
-      canKickParticipants: true,
-      canRecord: true,
-      canScreenShare: true,
-      canUseWhiteboard: true,
-      canPromoteToHost: true,
-      canManageChat: true
-    },
-    student: {
-      canMuteOthers: false,
-      canKickParticipants: false,
-      canRecord: false,
-      canScreenShare: false,
-      canUseWhiteboard: false,
-      canPromoteToHost: false,
-      canManageChat: false
-    }
-  }
-};
 
 // =================== VIRTUAL BACKGROUND MANAGER ===================
 class VirtualBackgroundManager {
@@ -226,11 +228,63 @@ const generateValidUID = (userId) => {
   return Math.floor(Math.random() * (Math.pow(2, 32) - 1));
 };
 
-// =================== OPTIMIZED CREDENTIALS HOOK ===================
+// =================== API SERVICES ===================
+const apiService = {
+  async startScreenShare(liveClassId, userId) {
+    try {
+      const token = localStorage.getItem('teacherToken');
+      const response = await fetch(baseUrl + 'api/live/start-screen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ liveClassId, userId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to start screen sharing');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Start screen share error:', error);
+      throw error;
+    }
+  },
+
+  async stopScreenShare(liveClassId, userId) {
+    try {
+      const token = localStorage.getItem('teacherToken');
+      const response = await fetch(baseUrl + 'api/live/stop-screen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ liveClassId, userId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to stop screen sharing');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Stop screen share error:', error);
+      throw error;
+    }
+  }
+};
+
+// =================== CREDENTIALS HOOK ===================
 const useAgoraCredentials = (classScheduleId) => {
   const [credentials, setCredentials] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [liveClassId, setLiveClassId] = useState(null);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -256,7 +310,7 @@ const useAgoraCredentials = (classScheduleId) => {
         const token = localStorage.getItem('teacherToken');
         if (!token) throw new Error('Authentication required');
 
-        const response = await fetch('/api/live/credentials', {
+        const response = await fetch(baseUrl + 'api/live/credentials', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -281,6 +335,8 @@ const useAgoraCredentials = (classScheduleId) => {
         };
 
         setCredentials(validCredentials);
+        // Extract liveClassId from response or use classScheduleId as fallback
+        setLiveClassId(data.data.liveClassId || classScheduleId);
         setError(null);
       } catch (err) {
         console.error('Credentials error:', err);
@@ -293,7 +349,7 @@ const useAgoraCredentials = (classScheduleId) => {
     fetchCredentials();
   }, [classScheduleId]);
 
-  return { credentials, loading, error };
+  return { credentials, loading, error, liveClassId };
 };
 
 // =================== UI COMPONENTS ===================
@@ -432,8 +488,8 @@ const VideoControls = ({
   );
 };
 
-// =================== OPTIMIZED VIDEO PARTICIPANT COMPONENT ===================
-const VideoParticipant = ({ 
+// =================== VIDEO PARTICIPANT COMPONENT ===================
+const VideoParticipant = React.memo(({ 
   user, audioTrack, videoTrack, screenTrack, isLocal = false, isScreenShare = false,
   micOn = true, cameraOn = true, handRaised = false, className = ""
 }) => {
@@ -449,7 +505,7 @@ const VideoParticipant = ({
   const [audioLevel, setAudioLevel] = useState(0);
   const animationFrameRef = useRef(null);
 
-  // Optimized audio level monitoring with cleanup
+  // Optimized audio level monitoring with memory leak fix
   useEffect(() => {
     if (audioTrack && micOn) {
       const updateAudioLevel = () => {
@@ -466,6 +522,7 @@ const VideoParticipant = ({
       setAudioLevel(0);
     }
 
+    // Cleanup animation frame to prevent memory leaks
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -565,7 +622,7 @@ const VideoParticipant = ({
       <div className="absolute top-4 left-4 w-2 h-2 bg-green-400 rounded-full shadow-lg animate-pulse"></div>
     </div>
   );
-};
+});
 
 // =================== VIRTUAL BACKGROUND PANEL ===================
 const VirtualBackgroundPanel = ({ isOpen, onClose, onBackgroundChange }) => {
@@ -826,7 +883,7 @@ const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, currentUser, user
     e.preventDefault();
     if (newMessage.trim() && currentUser) {
       onSendMessage({
-        id: Date.now(),
+        id: Date.now() + Math.random(),
         user: currentUser.name || currentUser.username || 'You',
         message: newMessage.trim(),
         timestamp: new Date().toLocaleTimeString(),
@@ -998,8 +1055,8 @@ const ParticipantsPanel = ({ isOpen, onClose, participants, currentUser, userRol
   );
 };
 
-// =================== OPTIMIZED CLIENT COMPONENT ===================
-const ClassroomContent = ({ credentials }) => {
+// =================== MAIN CLASSROOM CONTENT COMPONENT ===================
+const ClassroomContent = ({ credentials, liveClassId }) => {
   const userInfo = useMemo(() => getUserInfo(), []);
   const navigate = useNavigate();
 
@@ -1014,7 +1071,7 @@ const ClassroomContent = ({ credentials }) => {
   const [isVirtualBgPanelOpen, setIsVirtualBgPanelOpen] = useState(false);
   const [virtualBgEnabled, setVirtualBgEnabled] = useState(false);
   const [duration, setDuration] = useState('0:00');
-  const [connectionState, setConnectionState] = useState('disconnected');
+  const [connectionState, setConnectionState] = useState('DISCONNECTED');
   const [chatMessages, setChatMessages] = useState([]);
 
   // Virtual background management
@@ -1068,7 +1125,7 @@ const ClassroomContent = ({ credentials }) => {
     };
   }, []);
 
-  // Agora hooks with optimized configuration
+  // Agora hooks with error handling
   const client = useRTCClient();
 
   const { localMicrophoneTrack } = useLocalMicrophoneTrack(isAudioEnabled, {
@@ -1080,20 +1137,16 @@ const ClassroomContent = ({ credentials }) => {
     encoderConfig: { width: 1280, height: 720, frameRate: 30, bitrateMin: 600, bitrateMax: 1000 }
   });
 
-  // DIRECT SCREEN SHARING WITHOUT BACKEND API - ZERO SERVER LOAD
   const { screenTrack, error: screenError } = useLocalScreenTrack(isScreenSharing, {
-    encoderConfig: "1080p_1", 
-    optimizeForDetail: true
+    encoderConfig: "1080p_1", optimizeForDetail: true
   }, "disable");
 
   const remoteUsers = useRemoteUsers();
   const { audioTracks: remoteAudioTracks } = useRemoteAudioTracks(remoteUsers);
   const { videoTracks: remoteVideoTracks } = useRemoteVideoTracks(remoteUsers);
-
-  // Optimized join with cleanup
   const joinResult = useJoin(joinParams, joinParams !== null);
 
-  // Enhanced track publishing with screen share detection
+  // Enhanced track publishing
   const tracksToPublish = useMemo(() => {
     const tracks = [];
 
@@ -1103,7 +1156,7 @@ const ClassroomContent = ({ credentials }) => {
 
     if (isScreenSharing && screenTrack) {
       tracks.push(screenTrack);
-      console.log('📺 Publishing screen track (direct Agora - no server load)');
+      console.log('📺 Publishing screen track');
     } else if (localCameraTrack && !isScreenSharing) {
       // Apply virtual background if enabled
       if (virtualBgEnabled && virtualBgManager.current.processor) {
@@ -1122,23 +1175,21 @@ const ClassroomContent = ({ credentials }) => {
 
   usePublish(tracksToPublish);
 
-  // Handle screen sharing errors with better UX
+  // Handle screen sharing errors
   useEffect(() => {
     if (screenError) {
       console.error('🚨 Screen sharing error:', screenError);
       setIsScreenSharing(false);
 
       if (screenError.code === 'PERMISSION_DENIED') {
-        alert('Screen sharing permission denied. Please allow screen sharing in your browser settings.');
-      } else if (screenError.code === 'NOT_SUPPORTED') {
-        alert('Screen sharing is not supported on this browser. Please use Chrome, Firefox, or Edge.');
+        alert('Screen sharing permission denied. Please allow screen sharing.');
       } else {
-        console.warn('Screen sharing error:', screenError.message);
+        alert('Screen sharing failed. Please try again.');
       }
     }
   }, [screenError]);
 
-  // Optimized remote audio handling with proper cleanup
+  // Auto-play remote audio with memory leak fix
   useEffect(() => {
     const handleRemoteAudio = async () => {
       for (const track of remoteAudioTracks) {
@@ -1212,7 +1263,7 @@ const ClassroomContent = ({ credentials }) => {
     };
   }, [client]);
 
-  // Optimized duration timer with cleanup
+  // Duration timer with memory leak fix
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -1301,7 +1352,7 @@ const ClassroomContent = ({ credentials }) => {
   const hasScreenShare = Boolean(screenSharingParticipant);
   const screenSharingUser = screenSharingParticipant?.name || screenSharingParticipant?.username || 'Someone';
 
-  // Optimized event handlers
+  // Event handlers
   const handleToggleAudio = useCallback(() => {
     setIsAudioEnabled(prev => {
       console.log(`🎤 Audio ${!prev ? 'enabled' : 'disabled'}`);
@@ -1316,34 +1367,61 @@ const ClassroomContent = ({ credentials }) => {
     });
   }, []);
 
-  // DIRECT AGORA SCREEN SHARING - NO BACKEND CALLS, ZERO SERVER LOAD
+  // BACKEND INTEGRATED SCREEN SHARING WITH API CALLS
   const handleToggleScreenShare = useCallback(async () => {
     if (!permissions.canScreenShare) {
       alert('You do not have permission to share screen');
       return;
     }
 
+    if (!liveClassId) {
+      alert('Live class ID not available. Please rejoin the classroom.');
+      return;
+    }
+
     const newState = !isScreenSharing;
-    console.log(`🖥️ Screen sharing ${newState ? 'starting' : 'stopping'} - Direct Agora (no server load)`);
 
     try {
-      setIsScreenSharing(newState);
+      if (newState) {
+        // Start screen sharing with backend API call
+        console.log('🖥️ Starting screen share API call');
+        const response = await apiService.startScreenShare(liveClassId, userInfo._id);
+        console.log('✅ Screen share started via API:', response);
 
-      // Add system message for screen sharing state
-      setChatMessages(prev => [...prev, {
-        id: Date.now() + Math.random(),
-        user: 'System',
-        message: `${userInfo.name || 'You'} ${newState ? 'started' : 'stopped'} screen sharing`,
-        timestamp: new Date().toLocaleTimeString(),
-        isOwn: false,
-        role: 'system'
-      }]);
+        setIsScreenSharing(true);
 
+        setChatMessages(prev => [...prev, {
+          id: Date.now() + Math.random(),
+          user: 'System',
+          message: `${userInfo.name || 'You'} started screen sharing`,
+          timestamp: new Date().toLocaleTimeString(),
+          isOwn: false,
+          role: 'system'
+        }]);
+      } else {
+        // Stop screen sharing with backend API call
+        console.log('🛑 Stopping screen share API call');
+        const response = await apiService.stopScreenShare(liveClassId, userInfo._id);
+        console.log('✅ Screen share stopped via API:', response);
+
+        setIsScreenSharing(false);
+
+        setChatMessages(prev => [...prev, {
+          id: Date.now() + Math.random(),
+          user: 'System',
+          message: `${userInfo.name || 'You'} stopped screen sharing`,
+          timestamp: new Date().toLocaleTimeString(),
+          isOwn: false,
+          role: 'system'
+        }]);
+      }
     } catch (error) {
-      console.error('❌ Screen sharing error:', error);
-      setIsScreenSharing(prev => prev); // Revert state
+      console.error('❌ Screen sharing API error:', error);
+      alert(`Failed to ${newState ? 'start' : 'stop'} screen sharing: ${error.message}`);
+      // Revert the state in case of API failure
+      setIsScreenSharing(prev => prev);
     }
-  }, [permissions.canScreenShare, isScreenSharing, userInfo]);
+  }, [permissions.canScreenShare, isScreenSharing, userInfo, liveClassId]);
 
   const handleToggleVirtualBg = useCallback(() => {
     setIsVirtualBgPanelOpen(prev => !prev);
@@ -1401,8 +1479,7 @@ const ClassroomContent = ({ credentials }) => {
 
     if (confirm(`Remove ${participant.name || participant.username || 'this participant'} from the classroom?`)) {
       try {
-        // For now, just show system message
-        console.log('👢 Removing user (UI only):', participant.uid);
+        console.log('👢 Removing user:', participant.uid);
 
         setChatMessages(prev => [...prev, {
           id: Date.now() + Math.random(),
@@ -1607,14 +1684,14 @@ const ClassroomContent = ({ credentials }) => {
   );
 };
 
-// =================== OPTIMIZED MAIN COMPONENT ===================
+// =================== MAIN LIVECLASSROOM COMPONENT WITH MEMORY LEAK FIX ===================
 let clientInstance = null;
 
 const LiveClassroom = () => {
   const { classScheduleId } = useParams();
   const navigate = useNavigate();
 
-  const { credentials, loading, error } = useAgoraCredentials(classScheduleId);
+  const { credentials, loading, error, liveClassId } = useAgoraCredentials(classScheduleId);
 
   // Create client instance only once to prevent memory leaks
   const client = useMemo(() => {
@@ -1622,18 +1699,13 @@ const LiveClassroom = () => {
       clientInstance = AgoraRTC.createClient({ 
         mode: "rtc", 
         codec: "vp8",
-        role: "host" // Set role to host for better performance
-      });
-
-      // Enable dual stream for better quality
-      clientInstance.enableDualStream().catch(err => {
-        console.warn('Dual stream not supported:', err);
+        role: "host"
       });
     }
     return clientInstance;
   }, []);
 
-  // Cleanup on unmount
+  // Cleanup on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
       if (clientInstance) {
@@ -1698,11 +1770,11 @@ const LiveClassroom = () => {
     );
   }
 
-  // Main render with optimized AgoraRTC provider
+  // Main render with AgoraRTC provider and error boundary
   return (
     <ErrorBoundary>
       <AgoraRTCProvider client={client}>
-        <ClassroomContent credentials={credentials} />
+        <ClassroomContent credentials={credentials} liveClassId={liveClassId} />
       </AgoraRTCProvider>
     </ErrorBoundary>
   );
