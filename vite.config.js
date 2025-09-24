@@ -8,7 +8,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: 'https://backend.oratrics.in',
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {
