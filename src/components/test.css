@@ -1,0 +1,483 @@
+/* PRODUCTION-LEVEL VIDEO RENDERING FIXES */
+
+/* Critical Agora video container styling */
+.agora-video-player,
+.agora-video-container,
+[data-agora-video] {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  background-color: #1f2937 !important;
+  border-radius: inherit !important;
+}
+
+/* Video element specific fixes */
+video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  background-color: #1f2937 !important;
+  border-radius: inherit !important;
+  display: block !important;
+}
+
+/* Screen sharing video styling */
+.screen-share-video video,
+.screen-share-container video {
+  object-fit: contain !important;
+  background-color: #000 !important;
+}
+
+/* Production video container */
+.production-video-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background-color: #1f2937;
+}
+
+.production-video-container > * {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: inherit;
+}
+
+/* Avatar fallback styling */
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  font-size: 3rem;
+  font-weight: bold;
+  border-radius: inherit;
+}
+
+.avatar-fallback.teacher {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.avatar-fallback.student {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.avatar-fallback.error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+/* Enhanced animations */
+@keyframes float-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-50px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100px) scale(0.8);
+  }
+}
+
+@keyframes bounce-reaction {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-20px);
+  }
+  60% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.33);
+  }
+  40%, 50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.33);
+  }
+}
+
+.animate-float-up {
+  animation: float-up 3s ease-out forwards;
+}
+
+.animate-bounce-reaction {
+  animation: bounce-reaction 2s ease-in-out;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 1.25s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* Connection status indicators */
+.connection-indicator {
+  position: relative;
+}
+
+.connection-indicator::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: currentColor;
+  opacity: 0.3;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Enhanced video transitions */
+.video-participant {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.video-participant:hover {
+  transform: scale(1.02);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Screen sharing specific styles */
+.screen-share-container {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+.screen-share-indicator {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+  animation: pulse-ring 3s ease-in-out infinite;
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-skeleton 1.5s infinite;
+}
+
+@keyframes loading-skeleton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Enhanced glassmorphism effects */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+}
+
+.glass-morphism-dark {
+  background: rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Enhanced button effects */
+.btn-glow {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  transition: all 0.3s ease-in-out;
+}
+
+.btn-glow:hover {
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+  transform: translateY(-2px);
+}
+
+/* Professional scrollbars */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Audio visualization */
+.audio-visualizer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.audio-bar {
+  width: 3px;
+  height: 10px;
+  background-color: #10b981;
+  border-radius: 1px;
+  animation: audio-pulse 0.8s ease-in-out infinite alternate;
+}
+
+.audio-bar:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.audio-bar:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+@keyframes audio-pulse {
+  from {
+    height: 4px;
+  }
+  to {
+    height: 12px;
+  }
+}
+
+/* Network quality indicators */
+.network-excellent {
+  color: #10b981;
+}
+
+.network-good {
+  color: #3b82f6;
+}
+
+.network-fair {
+  color: #f59e0b;
+}
+
+.network-poor {
+  color: #ef4444;
+}
+
+/* Speaking indicator animation */
+.speaking-indicator {
+  animation: speaking-pulse 1s ease-in-out infinite;
+}
+
+@keyframes speaking-pulse {
+  0%, 100% {
+    background-color: #10b981;
+  }
+  50% {
+    background-color: #34d399;
+  }
+}
+
+/* Whiteboard styles */
+.whiteboard-canvas {
+  cursor: crosshair;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.whiteboard-canvas:active {
+  cursor: none;
+}
+
+/* Reaction animations */
+.reaction-float {
+  position: absolute;
+  pointer-events: none;
+  font-size: 2rem;
+  user-select: none;
+  z-index: 1000;
+}
+
+/* Custom loading spinner */
+.oratrics-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Participant list animations */
+.participant-enter {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: participant-enter 0.3s ease-out forwards;
+}
+
+@keyframes participant-enter {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.participant-exit {
+  opacity: 1;
+  transform: translateY(0);
+  animation: participant-exit 0.2s ease-in forwards;
+}
+
+@keyframes participant-exit {
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* Connection status animations */
+.connection-connecting::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6, #3b82f6);
+  background-size: 200% 200%;
+  animation: connection-pulse 2s linear infinite;
+  border-radius: inherit;
+  z-index: -1;
+}
+
+@keyframes connection-pulse {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+/* Error shake animation */
+.error-shake {
+  animation: error-shake 0.5s ease-in-out;
+}
+
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  40% { transform: translateX(10px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+/* Success fade in */
+.success-fade-in {
+  animation: success-fade-in 0.5s ease-out;
+}
+
+@keyframes success-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive design enhancements */
+@media (max-width: 768px) {
+  .mobile-optimize {
+    padding: 0.5rem;
+  }
+  
+  .mobile-text {
+    font-size: 0.875rem;
+  }
+  
+  .mobile-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .production-video-container {
+    border-radius: 1rem;
+  }
+
+  .agora-video-player {
+    border-radius: 1rem;
+  }
+
+  video {
+    border-radius: 1rem !important;
+  }
+}
+
+/* Print styles for whiteboard export */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-optimize {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .high-contrast {
+    border: 2px solid currentColor;
+    background: transparent;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-up,
+  .animate-bounce-reaction,
+  .animate-pulse-ring {
+    animation: none;
+  }
+}
+
+/* Force hardware acceleration for smooth video */
+.video-participant,
+.production-video-container,
+video {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Ensure video elements are visible */
+video:not([src]):not([srcObject]) {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
