@@ -26,9 +26,9 @@ import {
   RotateCcw, Save, Trash2, Pen, Eraser, MoreHorizontal,
   Image, Camera, Volume2, VolumeX
 } from 'lucide-react';
+const baseUrl = 'https://backend.oratrics.in/' 
 
 // =================== CONSTANTS ===================
-const baseUrl = 'https://backend.oratrics.in/' || window.location.origin + '/';
 
 const CONSTANTS = {
   ROLES: {
