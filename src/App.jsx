@@ -42,7 +42,7 @@ function App() {
               <Route path="classes" element={<ClassesManagement />} />
               <Route path="students" element={<StudentsManagement />} />
               
-                   <Route path="newmyclass" element={<MyClasses />} />
+                   <Route path="newclass" element={<MyClasses />} />
               
 
               
