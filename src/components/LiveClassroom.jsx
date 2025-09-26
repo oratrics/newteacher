@@ -1,4 +1,4 @@
-// LiveClassroom.jsx - PERFECT FULLSCREEN COMPONENT WITH TRUE FLOATING ELEMENTS
+// LiveClassroom.jsx - WORLD'S MOST BEAUTIFUL & ADVANCED VIDEO CONFERENCING
 import React, { 
   useState, 
   useRef, 
@@ -22,7 +22,7 @@ import ClassroomFeatures from './ClassroomFeatures';
 import './LiveClassroom.css';
 
 // Agora Configuration
-AgoraRTC.setLogLevel(4);
+AgoraRTC.setLogLevel(4); // Error level only in production
 
 const LiveClassroom = () => {
   const { classScheduleId } = useParams();
@@ -44,9 +44,6 @@ const LiveClassroom = () => {
   const dragRefs = useRef({});
   const isDragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
-
-  // Header visibility for fullscreen experience
-  const headerTimeoutRef = useRef(null);
 
   // User info with enhanced error handling
   const userInfo = useMemo(() => {
@@ -79,73 +76,30 @@ const LiveClassroom = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [screenTrack, setScreenTrack] = useState(null);
 
-  // UI state - optimized for fullscreen
+  // Advanced UI state
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   const [currentLeftPanel, setCurrentLeftPanel] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [viewMode, setViewMode] = useState('gallery');
   const [focusedUser, setFocusedUser] = useState(null);
-  const [headerVisible, setHeaderVisible] = useState(false);
 
   // Draggable popup video state
   const [popupVideos, setPopupVideos] = useState([]);
   const [nextPopupId, setNextPopupId] = useState(1);
 
+  // Whiteboard state
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
+
   // Leave confirmation state
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
+  // Settings state
+  const [videoSettings, setVideoSettings] = useState({});
+
   const isTeacher = userInfo?.role === 'teacher';
 
-  // Header visibility management for true fullscreen
-  const showHeader = useCallback(() => {
-    setHeaderVisible(true);
-    if (headerTimeoutRef.current) {
-      clearTimeout(headerTimeoutRef.current);
-    }
-    headerTimeoutRef.current = setTimeout(() => {
-      if (mountedRef.current && !leftSidebarOpen && !showLeaveConfirm) {
-        setHeaderVisible(false);
-      }
-    }, 3000);
-  }, [leftSidebarOpen, showLeaveConfirm]);
-
-  const hideHeader = useCallback(() => {
-    if (!leftSidebarOpen && !showLeaveConfirm) {
-      setHeaderVisible(false);
-      if (headerTimeoutRef.current) {
-        clearTimeout(headerTimeoutRef.current);
-      }
-    }
-  }, [leftSidebarOpen, showLeaveConfirm]);
-
-  // Mouse movement detection for header
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (e.clientY < 100) { // Top 100px of screen
-        showHeader();
-      } else if (e.clientY > 200 && !leftSidebarOpen && !showLeaveConfirm) {
-        hideHeader();
-      }
-    };
-
-    const handleMouseLeave = () => {
-      hideHeader();
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseleave', handleMouseLeave);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseleave', handleMouseLeave);
-      if (headerTimeoutRef.current) {
-        clearTimeout(headerTimeoutRef.current);
-      }
-    };
-  }, [showHeader, hideHeader, leftSidebarOpen, showLeaveConfirm]);
-
-  // Advanced notification system
+  // Advanced notification system with queue management
   const showNotification = useCallback((message, type = 'info', duration = 3000) => {
     if (!mountedRef.current || !message) return;
 
@@ -159,7 +113,7 @@ const LiveClassroom = () => {
     };
 
     setNotifications(prev => {
-      const filtered = prev.slice(-3);
+      const filtered = prev.slice(-3); // Keep max 4 notifications
       return [...filtered, notification];
     });
 
@@ -177,7 +131,7 @@ const LiveClassroom = () => {
   const { localMicrophoneTrack, error: micError } = useLocalMicrophoneTrack(micEnabled);
   const { localCameraTrack, error: cameraError } = useLocalCameraTrack(videoEnabled);
 
-  // Safe track publishing
+  // Safe track publishing with comprehensive error handling
   const tracksToPublish = useMemo(() => {
     const tracks = [];
 
@@ -202,7 +156,7 @@ const LiveClassroom = () => {
   usePublish(tracksToPublish);
   const remoteUsers = useRemoteUsers();
 
-  // Join configuration
+  // Enhanced join configuration with validation
   const joinConfig = useMemo(() => {
     const config = {
       appid: configRef.current.agoraAppId || null,
@@ -210,6 +164,13 @@ const LiveClassroom = () => {
       token: configRef.current.token || null,
       uid: configRef.current.uid || null
     };
+
+    console.log('Join config prepared:', {
+      hasAppId: !!config.appid,
+      hasChannel: !!config.channel,
+      hasToken: !!config.token,
+      uid: config.uid
+    });
 
     return config;
   }, [configRef.current.agoraAppId, configRef.current.channelName]);
@@ -224,9 +185,14 @@ const LiveClassroom = () => {
 
   const { isLoading: joining, isConnected, error: joinError } = useJoin(joinConfig, shouldJoin);
 
-  // Credentials fetching
+  // Robust credentials fetching with enhanced retry logic
   const fetchCredentials = useCallback(async (retryCount = 0) => {
     if (!userInfo || !classScheduleId || !mountedRef.current) {
+      console.error('Missing required data for credentials fetch:', {
+        hasUserInfo: !!userInfo,
+        hasClassScheduleId: !!classScheduleId,
+        isMounted: mountedRef.current
+      });
       return;
     }
 
@@ -251,6 +217,7 @@ const LiveClassroom = () => {
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify({ 
           classScheduleId, 
@@ -263,19 +230,35 @@ const LiveClassroom = () => {
 
       clearTimeout(timeoutId);
 
+      console.log('Credentials API response:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('API Error Response:', errorText);
 
         if (response.status === 401) {
           throw new Error('Authentication failed. Please login again.');
         } else if (response.status === 404) {
           throw new Error('Classroom not found or has ended.');
+        } else if (response.status >= 500) {
+          throw new Error('Server error. Please try again later.');
         } else {
           throw new Error(`Request failed: ${response.status} ${response.statusText}`);
         }
       }
 
       const data = await response.json();
+      console.log('Credentials received:', {
+        hasData: !!data,
+        hasAppId: !!(data.data?.agoraAppId || data.agoraAppId),
+        hasChannel: !!(data.data?.channelName || data.channelName),
+        hasToken: !!(data.data?.token || data.token)
+      });
+
       const creds = data.data || data;
 
       if (!creds.agoraAppId) {
@@ -293,18 +276,28 @@ const LiveClassroom = () => {
           uid: creds.uid || Math.floor(Math.random() * 100000)
         };
 
+        console.log('Credentials configured:', {
+          appId: configRef.current.agoraAppId.substring(0, 8) + '...',
+          channel: configRef.current.channelName,
+          hasToken: !!configRef.current.token,
+          uid: configRef.current.uid
+        });
+
         setConnectionState('ready');
         reconnectAttempts.current = 0;
-        showNotification('Connected to classroom successfully!', 'success', 3000);
+        showNotification('Connected to classroom successfully!', 'success', 5000);
       }
 
     } catch (error) {
+      console.error('Credentials fetch error:', error);
+
       if (!mountedRef.current) return;
 
       const errorMessage = error.message || 'Unknown error occurred';
       setConnectionError(errorMessage);
 
       if (retryCount < maxRetries && !error.message.includes('Authentication')) {
+        console.log(`Retrying in ${retryDelay}ms...`);
         setConnectionState('reconnecting');
         showNotification(`Connection failed. Retrying... (${retryCount + 1}/${maxRetries})`, 'info', 2000);
 
@@ -320,81 +313,93 @@ const LiveClassroom = () => {
     }
   }, [userInfo, classScheduleId, showNotification]);
 
-  // Complete cleanup system
+  // Complete cleanup system - production grade
   const performCompleteCleanup = useCallback(async (skipNavigation = false) => {
-    console.log('🧹 Starting complete cleanup...');
+    console.log('🧹 Starting complete cleanup...', { skipNavigation });
 
     try {
+      // Clear all timers
       if (connectionTimerRef.current) {
         clearTimeout(connectionTimerRef.current);
         connectionTimerRef.current = null;
       }
 
-      if (headerTimeoutRef.current) {
-        clearTimeout(headerTimeoutRef.current);
-        headerTimeoutRef.current = null;
-      }
-
+      // Stop screen sharing
       if (screenTrackRef.current) {
         try {
+          console.log('📺 Stopping screen share...');
           await screenTrackRef.current.stop();
           await screenTrackRef.current.close();
           screenTrackRef.current = null;
           setScreenTrack(null);
           setIsScreenSharing(false);
+          console.log('✅ Screen share stopped');
         } catch (error) {
-          console.warn('Screen share cleanup error:', error);
+          console.warn('⚠️ Screen share cleanup error:', error);
         }
       }
 
+      // Unpublish tracks
       if (client && tracksToPublish.length > 0) {
         try {
+          console.log('📡 Unpublishing tracks...');
           await client.unpublish(tracksToPublish);
+          console.log('✅ Tracks unpublished');
         } catch (error) {
-          console.warn('Unpublish error:', error);
+          console.warn('⚠️ Unpublish error:', error);
         }
       }
 
+      // Stop local tracks
       if (localCameraTrack) {
         try {
+          console.log('📹 Stopping camera...');
           await localCameraTrack.stop();
           await localCameraTrack.close();
+          console.log('✅ Camera stopped');
         } catch (error) {
-          console.warn('Camera cleanup error:', error);
+          console.warn('⚠️ Camera cleanup error:', error);
         }
       }
 
       if (localMicrophoneTrack) {
         try {
+          console.log('🎤 Stopping microphone...');
           await localMicrophoneTrack.stop();
           await localMicrophoneTrack.close();
+          console.log('✅ Microphone stopped');
         } catch (error) {
-          console.warn('Microphone cleanup error:', error);
+          console.warn('⚠️ Microphone cleanup error:', error);
         }
       }
 
+      // Leave channel
       if (client && isConnected) {
         try {
+          console.log('🚪 Leaving channel...');
           await client.leave();
+          console.log('✅ Channel left successfully');
         } catch (error) {
-          console.warn('Leave channel error:', error);
+          console.warn('⚠️ Leave channel error:', error);
         }
       }
 
       // Reset all states
+      console.log('🔄 Resetting states...');
       setMicEnabled(false);
       setVideoEnabled(false);
       setConnectionState('idle');
       setChatMessages([]);
       setLeftSidebarOpen(false);
       setCurrentLeftPanel(null);
+      setShowWhiteboard(false);
       setFocusedUser(null);
       setViewMode('gallery');
       setConnectionError(null);
       setPopupVideos([]);
       setNextPopupId(1);
-      setHeaderVisible(false);
 
+      // Clear config
       configRef.current = {
         agoraAppId: '',
         channelName: '',
@@ -402,7 +407,11 @@ const LiveClassroom = () => {
         uid: null
       };
 
+      console.log('✅ Complete cleanup finished successfully');
+
+      // Navigate safely
       if (!skipNavigation && mountedRef.current) {
+        console.log('🧭 Navigating to teacher dashboard...');
         setTimeout(() => {
           if (mountedRef.current) {
             navigate('/teacher');
@@ -411,8 +420,9 @@ const LiveClassroom = () => {
       }
 
     } catch (error) {
-      console.error('Cleanup error:', error);
+      console.error('💥 Cleanup error:', error);
       if (!skipNavigation) {
+        console.log('🚨 Force navigating due to error...');
         navigate('/teacher');
       }
     }
@@ -425,7 +435,7 @@ const LiveClassroom = () => {
     navigate
   ]);
 
-  // Draggable popup video management - FIXED FOR TRUE FLOATING
+  // Draggable popup video management
   const createPopupVideo = useCallback((user, type = 'remote') => {
     if (!user || isLeaving) return;
 
@@ -439,6 +449,7 @@ const LiveClassroom = () => {
     };
 
     setPopupVideos(prev => {
+      // Remove existing popup for same user
       const filtered = prev.filter(p => 
         !(p.user.uid === user.uid || (type === 'local' && p.type === 'local'))
       );
@@ -464,12 +475,13 @@ const LiveClassroom = () => {
       }
     }
 
+    // If all positions are used, use bottom-right with offset
     return 'bottom-right';
   }, [popupVideos]);
 
-  // ENHANCED DRAG FUNCTIONALITY - WORKS WITH FULLSCREEN
+  // Drag functionality for popup videos
   const handleMouseDown = useCallback((e, popupId) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0) return; // Only left mouse button
 
     e.preventDefault();
     e.stopPropagation();
@@ -494,14 +506,13 @@ const LiveClassroom = () => {
       const x = e.clientX - dragOffset.current.x;
       const y = e.clientY - dragOffset.current.y;
 
-      // Perfect viewport constraints
+      // Constrain to viewport
       const maxX = window.innerWidth - popup.offsetWidth;
       const maxY = window.innerHeight - popup.offsetHeight;
 
       const constrainedX = Math.max(0, Math.min(x, maxX));
       const constrainedY = Math.max(0, Math.min(y, maxY));
 
-      // Set absolute positioning - works with fullscreen
       popup.style.left = constrainedX + 'px';
       popup.style.top = constrainedY + 'px';
       popup.style.right = 'auto';
@@ -510,9 +521,7 @@ const LiveClassroom = () => {
 
     const handleMouseUp = () => {
       isDragging.current = false;
-      if (popup) {
-        popup.classList.remove('dragging');
-      }
+      popup.classList.remove('dragging');
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
 
@@ -526,15 +535,23 @@ const LiveClassroom = () => {
 
   // Leave handlers
   const handleLeave = useCallback(() => {
-    if (isLeaving) return;
+    console.log('🚪 Leave button clicked');
+    if (isLeaving) {
+      console.log('⚠️ Already leaving, ignoring...');
+      return;
+    }
     setShowLeaveConfirm(true);
-    setHeaderVisible(true); // Show header for leave confirmation
   }, [isLeaving]);
 
   const confirmLeave = useCallback(async () => {
-    if (isLeaving) return;
+    console.log('✅ Confirm leave clicked');
+    if (isLeaving) {
+      console.log('⚠️ Already in leaving process, ignoring...');
+      return;
+    }
 
     try {
+      console.log('🚀 Starting leave process...');
       setIsLeaving(true);
       setShowLeaveConfirm(false);
       mountedRef.current = false;
@@ -543,7 +560,7 @@ const LiveClassroom = () => {
       await performCompleteCleanup(false);
 
     } catch (error) {
-      console.error('Leave process error:', error);
+      console.error('💥 Leave process error:', error);
       navigate('/teacher');
     } finally {
       setIsLeaving(false);
@@ -551,41 +568,31 @@ const LiveClassroom = () => {
   }, [isLeaving, showNotification, performCompleteCleanup, navigate]);
 
   const cancelLeave = useCallback(() => {
+    console.log('❌ Cancel leave clicked');
     if (!isLeaving) {
       setShowLeaveConfirm(false);
-      // Auto-hide header after canceling
-      setTimeout(() => {
-        if (!leftSidebarOpen) {
-          setHeaderVisible(false);
-        }
-      }, 2000);
     }
-  }, [isLeaving, leftSidebarOpen]);
+  }, [isLeaving]);
 
-  // Sidebar management - optimized for fullscreen
+  // Sidebar management
   const openLeftPanel = useCallback((panelType) => {
     if (!panelType || isLeaving) return;
 
     if (currentLeftPanel === panelType && leftSidebarOpen) {
       setLeftSidebarOpen(false);
       setCurrentLeftPanel(null);
-      // Auto-hide header when sidebar closes
-      setTimeout(() => setHeaderVisible(false), 1000);
     } else {
       setCurrentLeftPanel(panelType);
       setLeftSidebarOpen(true);
-      setHeaderVisible(true); // Show header when sidebar opens
     }
   }, [currentLeftPanel, leftSidebarOpen, isLeaving]);
 
   const closeLeftPanel = useCallback(() => {
     setLeftSidebarOpen(false);
     setCurrentLeftPanel(null);
-    // Auto-hide header after closing sidebar
-    setTimeout(() => setHeaderVisible(false), 1000);
   }, []);
 
-  // Screen sharing
+  // Screen sharing - enterprise grade
   const startScreenShare = useCallback(async () => {
     if (!isTeacher || isScreenSharing || isLeaving) {
       showNotification('Only teachers can share screen', 'error');
@@ -593,6 +600,8 @@ const LiveClassroom = () => {
     }
 
     try {
+      console.log('📺 Starting screen share...');
+
       const screenVideoTrack = await AgoraRTC.createScreenVideoTrack({
         encoderConfig: {
           width: 1920,
@@ -612,21 +621,25 @@ const LiveClassroom = () => {
         setViewMode('gallery');
 
         screenVideoTrack.on('track-ended', () => {
+          console.log('📺 Screen share ended by user');
           if (mountedRef.current) {
             stopScreenShare();
           }
         });
 
         showNotification('Screen sharing started successfully', 'success');
+        console.log('✅ Screen share started successfully');
       }
     } catch (error) {
-      console.error('Screen share failed:', error);
+      console.error('💥 Screen share failed:', error);
       setIsScreenSharing(false);
       setScreenTrack(null);
       screenTrackRef.current = null;
 
-      if (error.message.includes('Permission denied')) {
+      if (error.message.includes('Permission denied') || error.message.includes('NotAllowedError')) {
         showNotification('Screen share permission denied. Please allow access and try again.', 'error', 5000);
+      } else if (error.message.includes('NotSupportedError')) {
+        showNotification('Screen sharing is not supported in this browser.', 'error', 5000);
       } else {
         showNotification('Failed to start screen sharing. Please try again.', 'error');
       }
@@ -636,7 +649,9 @@ const LiveClassroom = () => {
   const stopScreenShare = useCallback(async () => {
     if (!isScreenSharing) return;
 
-    try {      
+    try {
+      console.log('📺 Stopping screen share...');
+
       if (screenTrackRef.current) {
         await screenTrackRef.current.stop();
         await screenTrackRef.current.close();
@@ -648,8 +663,9 @@ const LiveClassroom = () => {
       setViewMode('gallery');
 
       showNotification('Screen sharing stopped', 'info');
+      console.log('✅ Screen share stopped successfully');
     } catch (error) {
-      console.error('Stop screen share error:', error);
+      console.error('💥 Stop screen share error:', error);
       screenTrackRef.current = null;
       setScreenTrack(null);
       setIsScreenSharing(false);
@@ -664,7 +680,7 @@ const LiveClassroom = () => {
     }
   }, [isScreenSharing, startScreenShare, stopScreenShare]);
 
-  // Media controls
+  // Media controls - production grade
   const handleMicToggle = useCallback(() => {
     if (isLeaving) return;
 
@@ -693,7 +709,23 @@ const LiveClassroom = () => {
     });
   }, [isLeaving, isScreenSharing, showNotification]);
 
-  // Chat handling
+  // Whiteboard toggle
+  const toggleWhiteboard = useCallback(() => {
+    if (!isTeacher) {
+      showNotification('Only teachers can access the whiteboard', 'error');
+      return;
+    }
+
+    if (showWhiteboard) {
+      setShowWhiteboard(false);
+      setViewMode('gallery');
+    } else {
+      setShowWhiteboard(true);
+      setViewMode('whiteboard');
+    }
+  }, [isTeacher, showWhiteboard, showNotification]);
+
+  // Chat handling - optimized
   const handleSendMessage = useCallback((message) => {
     if (!mountedRef.current || !message?.trim() || isLeaving) return;
 
@@ -708,11 +740,13 @@ const LiveClassroom = () => {
 
       setChatMessages(prev => {
         const updated = [...prev, chatMessage];
-        return updated.slice(-100);
+        return updated.slice(-100); // Keep max 100 messages
       });
 
+      console.log('💬 Message sent:', chatMessage.content);
+
     } catch (error) {
-      console.error('Send message error:', error);
+      console.error('💥 Send message error:', error);
       showNotification('Failed to send message', 'error');
     }
   }, [userInfo, isLeaving, showNotification]);
@@ -723,6 +757,7 @@ const LiveClassroom = () => {
 
     setFocusedUser(user);
     setViewMode('focus');
+    console.log('👁️ Focused on user:', user.name || user.uid);
   }, [isLeaving]);
 
   // Create popup from video tile
@@ -730,43 +765,77 @@ const LiveClassroom = () => {
     createPopupVideo(user, type);
   }, [createPopupVideo]);
 
-  // Initialization effect
+  // Settings handlers
+  const handleVideoSettingsChange = useCallback((setting, value) => {
+    if (!setting || value === undefined) return;
+
+    setVideoSettings(prev => ({ ...prev, [setting]: value }));
+    showNotification(`${setting} updated successfully`, 'success', 2000);
+    console.log('⚙️ Setting changed:', setting, value);
+  }, [showNotification]);
+
+  const handleFeatureToggle = useCallback((feature, enabled) => {
+    if (!feature) return;
+
+    showNotification(
+      `${feature} ${enabled ? 'enabled' : 'disabled'}`, 
+      enabled ? 'success' : 'info',
+      2000
+    );
+    console.log('🎛️ Feature toggled:', feature, enabled);
+  }, [showNotification]);
+
+  // Initialization effect - robust
   useEffect(() => {
+    console.log('🚀 LiveClassroom component mounting...');
     mountedRef.current = true;
 
+    // Validate prerequisites
     if (!userInfo) {
+      console.error('❌ No user info found, redirecting to login...');
       showNotification('Please login to access the classroom', 'error');
       navigate('/login');
       return;
     }
 
     if (!classScheduleId) {
+      console.error('❌ No class schedule ID found');
       showNotification('Invalid classroom link', 'error');
       navigate('/teacher');
       return;
     }
 
+    console.log('✅ Prerequisites validated:', {
+      user: userInfo.name,
+      role: userInfo.role,
+      classId: classScheduleId
+    });
+
+    // Initialize credentials
     if (!configRef.current.agoraAppId) {
+      console.log('🔑 Fetching credentials...');
       fetchCredentials();
     }
 
+    // Cleanup function
     return () => {
+      console.log('🧹 LiveClassroom component unmounting...');
       mountedRef.current = false;
 
+      // Clear timers
       if (connectionTimerRef.current) {
         clearTimeout(connectionTimerRef.current);
+        connectionTimerRef.current = null;
       }
 
-      if (headerTimeoutRef.current) {
-        clearTimeout(headerTimeoutRef.current);
-      }
-
+      // Emergency cleanup - no navigation
       if (screenTrackRef.current) {
         try {
           screenTrackRef.current.stop();
           screenTrackRef.current.close();
+          screenTrackRef.current = null;
         } catch (error) {
-          console.warn('Emergency cleanup error:', error);
+          console.warn('⚠️ Emergency screen cleanup error:', error);
         }
       }
     };
@@ -775,6 +844,7 @@ const LiveClassroom = () => {
   // Connection status monitoring
   useEffect(() => {
     if (isConnected && mountedRef.current && connectionState !== 'connected') {
+      console.log('✅ Successfully connected to Agora channel');
       setConnectionState('connected');
       showNotification('Successfully joined classroom!', 'success', 3000);
       reconnectAttempts.current = 0;
@@ -784,6 +854,7 @@ const LiveClassroom = () => {
   // Error monitoring
   useEffect(() => {
     if (joinError && mountedRef.current) {
+      console.error('💥 Join error:', joinError);
       setConnectionState('failed');
       setConnectionError(joinError.message || 'Failed to join classroom');
       showNotification('Failed to join classroom: ' + (joinError.message || 'Unknown error'), 'error', 5000);
@@ -792,12 +863,14 @@ const LiveClassroom = () => {
 
   useEffect(() => {
     if (micError && mountedRef.current) {
+      console.error('💥 Microphone error:', micError);
       showNotification('Microphone access failed. Please check permissions.', 'error');
     }
   }, [micError, showNotification]);
 
   useEffect(() => {
     if (cameraError && mountedRef.current) {
+      console.error('💥 Camera error:', cameraError);
       showNotification('Camera access failed. Please check permissions.', 'error');
     }
   }, [cameraError, showNotification]);
@@ -853,7 +926,7 @@ const LiveClassroom = () => {
     cancelLeave
   ]);
 
-  // Loading state
+  // Loading state - enhanced
   if (connectionState === 'connecting' || connectionState === 'reconnecting' || joining) {
     return (
       <div className="classroom-loading">
@@ -867,14 +940,30 @@ const LiveClassroom = () => {
           <p>
             {connectionState === 'reconnecting'
               ? 'Attempting to restore connection...'
-              : 'Setting up your video conference...'}
+              : 'Setting up your premium video conference...'}
           </p>
+          <div className="loading-steps">
+            <div className={`step ${connectionState === 'connecting' ? 'active' : 'completed'}`}>
+              {connectionState === 'connecting' ? '⏳' : '✅'} Connecting to server...
+            </div>
+            <div className={`step ${joining ? 'active' : ''}`}>
+              ⏳ Initializing camera and microphone...
+            </div>
+            <div className="step">
+              ⏳ Joining classroom...
+            </div>
+          </div>
+          {connectionState === 'reconnecting' && (
+            <div className="reconnect-info">
+              <p>Attempt {reconnectAttempts.current + 1} of 3</p>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // Error state
+  // Error state - enhanced with diagnostics
   if (connectionState === 'failed') {
     return (
       <div className="classroom-error">
@@ -883,32 +972,28 @@ const LiveClassroom = () => {
           <h3>Connection Failed</h3>
           <p>Unable to connect to the classroom</p>
 
-          {connectionError && (
-            <div style={{ 
-              background: 'rgba(239, 68, 68, 0.1)', 
-              border: '1px solid rgba(239, 68, 68, 0.2)', 
-              borderRadius: '8px', 
-              padding: '12px', 
-              margin: '16px 0',
-              fontSize: '14px',
-              color: '#ef4444'
-            }}>
-              <strong>Error:</strong> {connectionError}
-            </div>
-          )}
+          <div className="error-details">
+            {connectionError && (
+              <div className="error-message">
+                <strong>Error:</strong> {connectionError}
+              </div>
+            )}
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+            <div className="troubleshooting">
+              <h4>Troubleshooting Steps:</h4>
+              <ul>
+                <li>Check your internet connection</li>
+                <li>Ensure camera and microphone permissions are granted</li>
+                <li>Try refreshing the page</li>
+                <li>Check if the classroom is still active</li>
+                <li>Contact support if the problem persists</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="error-actions">
             <button 
-              style={{
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
+              className="retry-btn" 
               onClick={() => {
                 setConnectionState('idle');
                 setConnectionError(null);
@@ -919,16 +1004,7 @@ const LiveClassroom = () => {
               🔄 Try Again
             </button>
             <button 
-              style={{
-                padding: '10px 20px',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
+              className="back-btn" 
               onClick={() => navigate('/teacher')}
             >
               ← Go Back
@@ -939,11 +1015,28 @@ const LiveClassroom = () => {
     );
   }
 
-  // Main classroom interface - TRUE FULLSCREEN
+  // Whiteboard mode
+  if (viewMode === 'whiteboard' && showWhiteboard) {
+    return (
+      <div className="classroom-overlay">
+        <WhiteboardComponent
+          userId={userInfo?._id}
+          userName={userInfo?.name || 'You'}
+          isTeacher={isTeacher}
+          onClose={() => {
+            setShowWhiteboard(false);
+            setViewMode('gallery');
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Main classroom interface - world's most beautiful
   return (
     <div className="meet-style-classroom">
-      {/* Floating Header - Only visible on hover/interaction */}
-      <header className={`meet-header ${headerVisible || leftSidebarOpen || showLeaveConfirm ? 'force-show' : ''}`}>
+      {/* Header */}
+      <header className="meet-header">
         <div className="meeting-info">
           <h2 className="meeting-title">Live Classroom</h2>
           <div className="meeting-status">
@@ -953,6 +1046,11 @@ const LiveClassroom = () => {
             <span className="participant-count">
               {remoteUsers.length + 1} participant{remoteUsers.length !== 0 ? 's' : ''}
             </span>
+            {connectionState === 'reconnecting' && (
+              <span className="reconnecting-status">
+                🔄 Reconnecting...
+              </span>
+            )}
           </div>
         </div>
 
@@ -971,239 +1069,259 @@ const LiveClassroom = () => {
         </div>
       </header>
 
-      {/* Floating Left Sidebar */}
-      <aside className={`left-sidebar ${leftSidebarOpen ? 'open' : ''}`}>
-        {leftSidebarOpen && (
-          <div className="sidebar-content">
-            <div className="sidebar-header">
-              <h3>
-                {currentLeftPanel === 'chat' && '💬 Chat'}
-                {currentLeftPanel === 'participants' && '👥 Participants'}
-                {currentLeftPanel === 'settings' && '⚙️ Settings'}
-              </h3>
-              <button 
-                className="close-sidebar" 
-                onClick={closeLeftPanel} 
-                aria-label="Close sidebar"
-              >
-                ✕
-              </button>
-            </div>
+      {/* Main Content */}
+      <main className="meet-content">
+        {/* Left Sidebar */}
+        <aside className={`left-sidebar ${leftSidebarOpen ? 'open' : 'closed'}`}>
+          {leftSidebarOpen && (
+            <div className="sidebar-content">
+              <div className="sidebar-header">
+                <h3>
+                  {currentLeftPanel === 'chat' && '💬 Chat'}
+                  {currentLeftPanel === 'participants' && '👥 Participants'}
+                  {currentLeftPanel === 'settings' && '⚙️ Settings'}
+                  {currentLeftPanel === 'features' && '⚡ Features'}
+                </h3>
+                <button 
+                  className="close-sidebar" 
+                  onClick={closeLeftPanel} 
+                  aria-label="Close sidebar"
+                >
+                  ✕
+                </button>
+              </div>
 
-            <div className="sidebar-body">
-              {/* Chat Panel */}
-              {currentLeftPanel === 'chat' && (
-                <div className="chat-container">
-                  <div className="chat-messages">
-                    {chatMessages.length === 0 ? (
-                      <div className="empty-state">
-                        <div className="empty-icon">💬</div>
-                        <p>No messages yet</p>
-                        <span>Send a message to start the conversation</span>
-                      </div>
-                    ) : (
-                      chatMessages.map(msg => (
-                        <div key={msg.id} className="message">
-                          <div className="message-header">
-                            <strong>{msg.userName}</strong>
-                            <span className="message-time">
-                              {msg.timestamp.toLocaleTimeString([], {
-                                hour: '2-digit', 
-                                minute: '2-digit'
-                              })}
-                            </span>
+              <div className="sidebar-body">
+                {/* Chat Panel */}
+                {currentLeftPanel === 'chat' && (
+                  <div className="chat-container">
+                    <div className="chat-messages">
+                      {chatMessages.length === 0 ? (
+                        <div className="empty-state">
+                          <div className="empty-icon">💬</div>
+                          <p>No messages yet</p>
+                          <span>Send a message to start the conversation</span>
+                        </div>
+                      ) : (
+                        chatMessages.map(msg => (
+                          <div key={msg.id} className="message">
+                            <div className="message-header">
+                              <strong>{msg.userName}</strong>
+                              <span className="message-time">
+                                {msg.timestamp.toLocaleTimeString([], {
+                                  hour: '2-digit', 
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            <div className="message-content">{msg.content}</div>
                           </div>
-                          <div className="message-content">{msg.content}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="chat-input-container">
-                    <input
-                      type="text"
-                      placeholder="Send a message to everyone"
-                      className="chat-input"
-                      maxLength={500}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && e.target.value.trim()) {
-                          handleSendMessage(e.target.value.trim());
-                          e.target.value = '';
-                        }
-                      }}
-                      disabled={isLeaving}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Participants Panel */}
-              {currentLeftPanel === 'participants' && (
-                <div className="participants-container">
-                  <div className="participant-list">
-                    {/* Local User */}
-                    <div className="participant-item local">
-                      <div className="participant-avatar">
-                        {userInfo?.name?.charAt(0)?.toUpperCase() || 'U'}
-                      </div>
-                      <div className="participant-details">
-                        <div className="participant-name">
-                          {userInfo?.name || 'You'} (You)
-                          {isTeacher && <span className="teacher-tag">Teacher</span>}
-                        </div>
-                        <div className="participant-status">
-                          <span className={`status-icon ${micEnabled ? 'on' : 'off'}`}>
-                            {micEnabled ? '🎤' : '🔇'}
-                          </span>
-                          <span className={`status-icon ${videoEnabled || isScreenSharing ? 'on' : 'off'}`}>
-                            {isScreenSharing ? '🖥️' : (videoEnabled ? '📹' : '📷')}
-                          </span>
-                        </div>
-                      </div>
+                        ))
+                      )}
                     </div>
 
-                    {/* Remote Users */}
-                    {remoteUsers.map(user => (
-                      <div 
-                        key={user.uid} 
-                        className="participant-item"
-                        onDoubleClick={() => handleCreatePopup(user)}
-                        title="Double-click to create floating window"
-                      >
+                    <div className="chat-input-container">
+                      <input
+                        type="text"
+                        placeholder="Send a message to everyone"
+                        className="chat-input"
+                        maxLength={500}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && e.target.value.trim()) {
+                            handleSendMessage(e.target.value.trim());
+                            e.target.value = '';
+                          }
+                        }}
+                        disabled={isLeaving}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Participants Panel */}
+                {currentLeftPanel === 'participants' && (
+                  <div className="participants-container">
+                    <div className="participant-list">
+                      {/* Local User */}
+                      <div className="participant-item local">
                         <div className="participant-avatar">
-                          {user.uid.toString().charAt(0).toUpperCase()}
+                          {userInfo?.name?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
                         <div className="participant-details">
-                          <div className="participant-name">User {user.uid}</div>
+                          <div className="participant-name">
+                            {userInfo?.name || 'You'} (You)
+                            {isTeacher && <span className="teacher-tag">Teacher</span>}
+                          </div>
                           <div className="participant-status">
-                            <span className={`status-icon ${user.audioTrack ? 'on' : 'off'}`}>
-                              {user.audioTrack ? '🎤' : '🔇'}
+                            <span className={`status-icon ${micEnabled ? 'on' : 'off'}`}>
+                              {micEnabled ? '🎤' : '🔇'}
                             </span>
-                            <span className={`status-icon ${user.videoTrack ? 'on' : 'off'}`}>
-                              {user.videoTrack ? '📹' : '📷'}
+                            <span className={`status-icon ${videoEnabled || isScreenSharing ? 'on' : 'off'}`}>
+                              {isScreenSharing ? '🖥️' : (videoEnabled ? '📹' : '📷')}
                             </span>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* Settings Panel */}
-              {currentLeftPanel === 'settings' && (
-                <div className="settings-container">
-                  <VideoSettingsPanel
-                    localCameraTrack={localCameraTrack}
-                    localMicrophoneTrack={localMicrophoneTrack}
-                    onClose={closeLeftPanel}
-                    isTeacher={isTeacher}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {/* Main Video Section - ABSOLUTE FULLSCREEN */}
-      <section className={`video-section ${leftSidebarOpen ? 'with-sidebar' : ''}`}>
-        {/* Video Grid - NO PADDING, TRUE FULLSCREEN */}
-        <div className="video-grid">
-          {viewMode === 'focus' && (focusedUser || isScreenSharing) ? (
-            // Focus Layout
-            <div className="focus-layout">
-              <div className="main-video">
-                {isScreenSharing && screenTrack ? (
-                  <div 
-                    className="screen-share-video"
-                    ref={(div) => {
-                      if (div && screenTrack && mountedRef.current) {
-                        try {
-                          screenTrack.play(div);
-                        } catch (error) {
-                          console.warn('Screen track play error:', error);
-                        }
-                      }
-                    }}
-                  />
-                ) : focusedUser?.videoTrack ? (
-                  <div 
-                    className="focused-video"
-                    ref={(div) => {
-                      if (div && focusedUser.videoTrack && mountedRef.current) {
-                        try {
-                          focusedUser.videoTrack.play(div);
-                        } catch (error) {
-                          console.warn('Focused video play error:', error);
-                        }
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="video-placeholder large">
-                    <div className="avatar large">
-                      {focusedUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+                      {/* Remote Users */}
+                      {remoteUsers.map(user => (
+                        <div 
+                          key={user.uid} 
+                          className="participant-item"
+                          onDoubleClick={() => handleCreatePopup(user)}
+                          title="Double-click to create floating window"
+                        >
+                          <div className="participant-avatar">
+                            {user.uid.toString().charAt(0).toUpperCase()}
+                          </div>
+                          <div className="participant-details">
+                            <div className="participant-name">User {user.uid}</div>
+                            <div className="participant-status">
+                              <span className={`status-icon ${user.audioTrack ? 'on' : 'off'}`}>
+                                {user.audioTrack ? '🎤' : '🔇'}
+                              </span>
+                              <span className={`status-icon ${user.videoTrack ? 'on' : 'off'}`}>
+                                {user.videoTrack ? '📹' : '📷'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <span className="user-name large">{focusedUser?.name || 'Unknown User'}</span>
+                  </div>
+                )}
+
+                {/* Settings Panel */}
+                {currentLeftPanel === 'settings' && (
+                  <div className="settings-container">
+                    <VideoSettingsPanel
+                      localCameraTrack={localCameraTrack}
+                      localMicrophoneTrack={localMicrophoneTrack}
+                      onClose={closeLeftPanel}
+                      onSettingsChange={handleVideoSettingsChange}
+                      isTeacher={isTeacher}
+                    />
+                  </div>
+                )}
+
+                {/* Features Panel */}
+                {currentLeftPanel === 'features' && (
+                  <div className="features-container">
+                    <ClassroomFeatures
+                      isTeacher={isTeacher}
+                      onFeatureToggle={handleFeatureToggle}
+                      participants={[
+                        {
+                          uid: configRef.current.uid,
+                          name: userInfo?.name || 'You',
+                          handRaised: false,
+                          micEnabled,
+                          videoEnabled: videoEnabled || isScreenSharing
+                        },
+                        ...remoteUsers.map(user => ({
+                          uid: user.uid,
+                          name: `User ${user.uid}`,
+                          handRaised: false,
+                          micEnabled: !!user.audioTrack,
+                          videoEnabled: !!user.videoTrack
+                        }))
+                      ]}
+                    />
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </aside>
 
-              {/* Floating Thumbnail Strip */}
-              
-              <div className="thumbnail-strip">
-                {/* Local Thumbnail */}
-                <div 
-                  className="video-thumbnail local" 
-                  onClick={() => setFocusedUser(null)}
-                  onDoubleClick={() => handleCreatePopup({ 
-                    name: userInfo?.name || 'You', 
-                    videoTrack: localCameraTrack,
-                    uid: 'local'
-                  }, 'local')}
-                  title="Double-click to create floating window"
-                >
-                  {localCameraTrack && videoEnabled ? (
+        {/* Video Section */}
+        <section className={`video-section ${leftSidebarOpen ? 'with-sidebar' : ''}`}>
+          {/* View Controls */}
+          <div className="view-controls">
+            <button 
+              className={`view-btn ${viewMode === 'gallery' ? 'active' : ''}`}
+              onClick={() => setViewMode('gallery')}
+              title="Gallery view (Grid)"
+              disabled={isLeaving}
+            >
+              <span>⚏</span>
+            </button>
+
+            {(isScreenSharing || remoteUsers.length > 0) && (
+              <button 
+                className={`view-btn ${viewMode === 'focus' ? 'active' : ''}`}
+                onClick={() => setViewMode('focus')}
+                title="Focus view (Speaker)"
+                disabled={isLeaving}
+              >
+                <span>🎯</span>
+              </button>
+            )}
+          </div>
+
+          {/* Video Grid */}
+          <div className={`video-grid ${viewMode}`}>
+            {viewMode === 'focus' && (focusedUser || isScreenSharing) ? (
+              // Focus Layout
+              <div className="focus-layout">
+                <div className="main-video">
+                  {isScreenSharing && screenTrack ? (
                     <div 
-                      className="thumbnail-video"
+                      className="screen-share-video"
                       ref={(div) => {
-                        if (div && localCameraTrack && mountedRef.current) {
+                        if (div && screenTrack && mountedRef.current) {
                           try {
-                            localCameraTrack.play(div);
+                            screenTrack.play(div);
                           } catch (error) {
-                            console.warn('Local thumbnail play error:', error);
+                            console.warn('Screen track play error:', error);
+                          }
+                        }
+                      }}
+                    />
+                  ) : focusedUser?.videoTrack ? (
+                    <div 
+                      className="focused-video"
+                      ref={(div) => {
+                        if (div && focusedUser.videoTrack && mountedRef.current) {
+                          try {
+                            focusedUser.videoTrack.play(div);
+                          } catch (error) {
+                            console.warn('Focused video play error:', error);
                           }
                         }
                       }}
                     />
                   ) : (
-                    <div className="thumbnail-placeholder">
-                      <div className="avatar small">
-                        {userInfo?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    <div className="video-placeholder large">
+                      <div className="avatar large">
+                        {focusedUser?.name?.charAt(0)?.toUpperCase() || 'U'}
                       </div>
+                      <span className="user-name large">{focusedUser?.name || 'Unknown User'}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Remote Thumbnails */}
-                {remoteUsers.map(user => (
+                <div className="thumbnail-strip">
+                  {/* Local Thumbnail */}
                   <div 
-                    key={user.uid} 
-                    className="video-thumbnail"
-                    onClick={() => handleUserFocus(user)}
-                    onDoubleClick={() => handleCreatePopup(user)}
+                    className="video-thumbnail local" 
+                    onClick={() => setFocusedUser(null)}
+                    onDoubleClick={() => handleCreatePopup({ 
+                      name: userInfo?.name || 'You', 
+                      videoTrack: localCameraTrack,
+                      uid: 'local'
+                    }, 'local')}
                     title="Double-click to create floating window"
                   >
-                    {user.videoTrack ? (
+                    {localCameraTrack && videoEnabled ? (
                       <div 
                         className="thumbnail-video"
                         ref={(div) => {
-                          if (div && user.videoTrack && mountedRef.current) {
+                          if (div && localCameraTrack && mountedRef.current) {
                             try {
-                              user.videoTrack.play(div);
+                              localCameraTrack.play(div);
                             } catch (error) {
-                              console.warn(`Remote thumbnail play error for ${user.uid}:`, error);
+                              console.warn('Local thumbnail play error:', error);
                             }
                           }
                         }}
@@ -1211,105 +1329,84 @@ const LiveClassroom = () => {
                     ) : (
                       <div className="thumbnail-placeholder">
                         <div className="avatar small">
-                          {user.uid.toString().charAt(0).toUpperCase()}
+                          {userInfo?.name?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
                       </div>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            // Gallery Layout - FULLSCREEN GRID
-            <div 
-              className="gallery-grid"
-              data-count={remoteUsers.length + 1}
-            >
-              {/* Local Video */}
-              <div 
-                className="video-tile local-tile" 
-                onClick={() => handleUserFocus({ 
-                  name: userInfo?.name || 'You', 
-                  videoTrack: localCameraTrack 
-                })}
-                onDoubleClick={() => handleCreatePopup({ 
-                  name: userInfo?.name || 'You', 
-                  videoTrack: localCameraTrack,
-                  uid: 'local'
-                }, 'local')}
-                title="Double-click to create floating window"
-              >
-                {isScreenSharing && screenTrack ? (
-                  <div 
-                    className="video-element screen-share"
-                    ref={(div) => {
-                      if (div && screenTrack && mountedRef.current) {
-                        try {
-                          screenTrack.play(div);
-                        } catch (error) {
-                          console.warn('Screen share video play error:', error);
-                        }
-                      }
-                    }}
-                  />
-                ) : localCameraTrack && videoEnabled ? (
-                  <div 
-                    className="video-element"
-                    ref={(div) => {
-                      if (div && localCameraTrack && mountedRef.current) {
-                        try {
-                          localCameraTrack.play(div);
-                        } catch (error) {
-                          console.warn('Local video play error:', error);
-                        }
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="video-placeholder">
-                    <div className="avatar">
-                      {userInfo?.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                    <div className="user-name">{userInfo?.name || 'You'}</div>
-                  </div>
-                )}
 
-                <div className="video-overlay">
-                  <div className="user-info">
-                    <span className="user-name">
-                      {userInfo?.name || 'You'} (You)
-                      {isScreenSharing && <span className="sharing-label"> - Sharing</span>}
-                    </span>
-                  </div>
-                  <div className="video-controls">
-                    <span className={`control ${micEnabled ? 'on' : 'off'}`}>
-                      {micEnabled ? '🎤' : '🔇'}
-                    </span>
-                    <span className={`control ${(videoEnabled || isScreenSharing) ? 'on' : 'off'}`}>
-                      {isScreenSharing ? '🖥️' : (videoEnabled ? '📹' : '📷')}
-                    </span>
-                  </div>
+                  {/* Remote Thumbnails */}
+                  {remoteUsers.map(user => (
+                    <div 
+                      key={user.uid} 
+                      className="video-thumbnail"
+                      onClick={() => handleUserFocus(user)}
+                      onDoubleClick={() => handleCreatePopup(user)}
+                      title="Double-click to create floating window"
+                    >
+                      {user.videoTrack ? (
+                        <div 
+                          className="thumbnail-video"
+                          ref={(div) => {
+                            if (div && user.videoTrack && mountedRef.current) {
+                              try {
+                                user.videoTrack.play(div);
+                              } catch (error) {
+                                console.warn(`Remote thumbnail play error for ${user.uid}:`, error);
+                              }
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="thumbnail-placeholder">
+                          <div className="avatar small">
+                            {user.uid.toString().charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Remote Videos */}
-              {remoteUsers.map(user => (
+            ) : (
+              // Gallery Layout
+              <div className="gallery-grid">
+                {/* Local Video */}
                 <div 
-                  key={user.uid} 
-                  className="video-tile"
-                  onClick={() => handleUserFocus(user)}
-                  onDoubleClick={() => handleCreatePopup(user)}
+                  className="video-tile local-tile" 
+                  onClick={() => handleUserFocus({ 
+                    name: userInfo?.name || 'You', 
+                    videoTrack: localCameraTrack 
+                  })}
+                  onDoubleClick={() => handleCreatePopup({ 
+                    name: userInfo?.name || 'You', 
+                    videoTrack: localCameraTrack,
+                    uid: 'local'
+                  }, 'local')}
                   title="Double-click to create floating window"
                 >
-                  {user.videoTrack ? (
+                  {isScreenSharing && screenTrack ? (
+                    <div 
+                      className="video-element screen-share"
+                      ref={(div) => {
+                        if (div && screenTrack && mountedRef.current) {
+                          try {
+                            screenTrack.play(div);
+                          } catch (error) {
+                            console.warn('Screen share video play error:', error);
+                          }
+                        }
+                      }}
+                    />
+                  ) : localCameraTrack && videoEnabled ? (
                     <div 
                       className="video-element"
                       ref={(div) => {
-                        if (div && user.videoTrack && mountedRef.current) {
+                        if (div && localCameraTrack && mountedRef.current) {
                           try {
-                            user.videoTrack.play(div);
+                            localCameraTrack.play(div);
                           } catch (error) {
-                            console.warn(`Remote video play error for ${user.uid}:`, error);
+                            console.warn('Local video play error:', error);
                           }
                         }
                       }}
@@ -1317,33 +1414,83 @@ const LiveClassroom = () => {
                   ) : (
                     <div className="video-placeholder">
                       <div className="avatar">
-                        {user.uid.toString().charAt(0).toUpperCase()}
+                        {userInfo?.name?.charAt(0)?.toUpperCase() || 'U'}
                       </div>
-                      <div className="user-name">User {user.uid}</div>
+                      <div className="user-name">{userInfo?.name || 'You'}</div>
                     </div>
                   )}
 
                   <div className="video-overlay">
                     <div className="user-info">
-                      <span className="user-name">User {user.uid}</span>
+                      <span className="user-name">
+                        {userInfo?.name || 'You'} (You)
+                        {isScreenSharing && <span className="sharing-label"> - Sharing</span>}
+                      </span>
                     </div>
                     <div className="video-controls">
-                      <span className={`control ${user.audioTrack ? 'on' : 'off'}`}>
-                        {user.audioTrack ? '🎤' : '🔇'}
+                      <span className={`control ${micEnabled ? 'on' : 'off'}`}>
+                        {micEnabled ? '🎤' : '🔇'}
                       </span>
-                      <span className={`control ${user.videoTrack ? 'on' : 'off'}`}>
-                        {user.videoTrack ? '📹' : '📷'}
+                      <span className={`control ${(videoEnabled || isScreenSharing) ? 'on' : 'off'}`}>
+                        {isScreenSharing ? '🖥️' : (videoEnabled ? '📹' : '📷')}
                       </span>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
 
-      {/* TRUE FLOATING POPUP VIDEOS */}
+                {/* Remote Videos */}
+                {remoteUsers.map(user => (
+                  <div 
+                    key={user.uid} 
+                    className="video-tile remote-tile"
+                    onClick={() => handleUserFocus(user)}
+                    onDoubleClick={() => handleCreatePopup(user)}
+                    title="Double-click to create floating window"
+                  >
+                    {user.videoTrack ? (
+                      <div 
+                        className="video-element"
+                        ref={(div) => {
+                          if (div && user.videoTrack && mountedRef.current) {
+                            try {
+                              user.videoTrack.play(div);
+                            } catch (error) {
+                              console.warn(`Remote video play error for ${user.uid}:`, error);
+                            }
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="video-placeholder">
+                        <div className="avatar">
+                          {user.uid.toString().charAt(0).toUpperCase()}
+                        </div>
+                        <div className="user-name">User {user.uid}</div>
+                      </div>
+                    )}
+
+                    <div className="video-overlay">
+                      <div className="user-info">
+                        <span className="user-name">User {user.uid}</span>
+                      </div>
+                      <div className="video-controls">
+                        <span className={`control ${user.audioTrack ? 'on' : 'off'}`}>
+                          {user.audioTrack ? '🎤' : '🔇'}
+                        </span>
+                        <span className={`control ${user.videoTrack ? 'on' : 'off'}`}>
+                          {user.videoTrack ? '📹' : '📷'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+
+      {/* Draggable Popup Videos */}
       {popupVideos.map(popup => (
         <div 
           key={popup.id}
@@ -1368,6 +1515,7 @@ const LiveClassroom = () => {
           </div>
 
           {popup.type === 'local' ? (
+            // Local popup video
             (localCameraTrack && videoEnabled) ? (
               <div 
                 className="popup-video-element"
@@ -1392,6 +1540,7 @@ const LiveClassroom = () => {
               </div>
             )
           ) : (
+            // Remote popup video
             popup.user.videoTrack ? (
               <div 
                 className="popup-video-element"
@@ -1419,7 +1568,7 @@ const LiveClassroom = () => {
         </div>
       ))}
 
-      {/* Floating Bottom Controls */}
+      {/* Bottom Controls */}
       <footer className="meet-controls">
         <div className="controls-wrapper">
           {/* Left Controls */}
@@ -1452,14 +1601,25 @@ const LiveClassroom = () => {
             </button>
 
             {isTeacher && (
-              <button 
-                className={`control-btn ${isScreenSharing ? 'sharing' : ''}`}
-                onClick={toggleScreenShare}
-                disabled={isLeaving}
-                title={isScreenSharing ? 'Stop presenting' : 'Present now'}
-              >
-                <span className="btn-icon">{isScreenSharing ? '🛑' : '🖥️'}</span>
-              </button>
+              <>
+                <button 
+                  className={`control-btn ${isScreenSharing ? 'sharing' : ''}`}
+                  onClick={toggleScreenShare}
+                  disabled={isLeaving}
+                  title={isScreenSharing ? 'Stop presenting' : 'Present now'}
+                >
+                  <span className="btn-icon">{isScreenSharing ? '🛑' : '🖥️'}</span>
+                </button>
+
+                <button 
+                  className="control-btn"
+                  onClick={toggleWhiteboard}
+                  disabled={isLeaving}
+                  title="Open whiteboard"
+                >
+                  <span className="btn-icon">📝</span>
+                </button>
+              </>
             )}
 
             <button 
@@ -1506,6 +1666,18 @@ const LiveClassroom = () => {
               <span className="btn-icon">⚙️</span>
               <span className="btn-label">Settings</span>
             </button>
+
+            {isTeacher && (
+              <button 
+                className={`sidebar-btn ${currentLeftPanel === 'features' && leftSidebarOpen ? 'active' : ''}`}
+                onClick={() => openLeftPanel('features')}
+                disabled={isLeaving}
+                title="More features"
+              >
+                <span className="btn-icon">⚡</span>
+                <span className="btn-label">More</span>
+              </button>
+            )}
           </div>
         </div>
       </footer>
@@ -1593,7 +1765,7 @@ const LiveClassroom = () => {
         </div>
       )}
 
-      {/* Floating Notifications */}
+      {/* Notifications */}
       <div className="notifications-toast">
         {notifications.map(notif => (
           <div key={notif.id} className={`toast ${notif.type}`}>
@@ -1608,6 +1780,16 @@ const LiveClassroom = () => {
           </div>
         ))}
       </div>
+
+      {/* Connection Status Indicator */}
+      {connectionState === 'reconnecting' && (
+        <div className="connection-status-indicator">
+          <div className="status-content">
+            <div className="status-spinner"></div>
+            <span>Reconnecting to classroom...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

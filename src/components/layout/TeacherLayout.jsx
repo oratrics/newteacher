@@ -25,6 +25,9 @@ const TeacherLayout = () => {
     { name: 'Dashboard', href: '/teacher', icon: HomeIcon },
     { name: 'Classes', href: '/teacher/classes', icon: CalendarIcon },
     { name: 'Students', href: '/teacher/students', icon: UserGroupIcon },
+        { name: 'Homework', href: '/teacher/homework', icon: AcademicCapIcon },
+    { name: 'Attendance', href: '/teacher/attendance', icon: AcademicCapIcon },
+
     { name: 'Courses', href: '/teacher/courses', icon: AcademicCapIcon },
     { name: 'Settings', href: '/teacher/profile', icon: CogIcon },
   ];

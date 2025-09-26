@@ -1,51 +1,83 @@
 // src/App.jsx
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
+// Import the AuthProvider (likely small and needed immediately)
 import { AuthProvider } from './contexts/AuthContext';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import TeacherLogin from './components/auth/TeacherLogin';
-import TeacherHomePage from './components/TeacherDashboard/HomePage';
-import ClassesManagement from './components/TeacherDashboard/ClassesManagement';
-import StudentsManagement from './components/TeacherDashboard/StudentsManagement';
-import TeacherLayout from './components/layout/TeacherLayout';
 
-import NotFound from './components/common/NotFound';
-import LiveClassroom from './components/VideoClassroom';
-import MyClasses from './components/MyClasses';
+// Import the ProtectedRoute (needed for all protected routes)
+import ProtectedRoute from './components/auth/ProtectedRoute';
+
+// 1. Convert component imports to dynamic imports using React.lazy()
+
+// Auth & Public
+const TeacherLogin = lazy(() => import('./components/auth/TeacherLogin'));
+const LiveClassroom = lazy(() => import('./components/VideoClassroom'));
+
+// Layout
+const TeacherLayout = lazy(() => import('./components/layout/TeacherLayout'));
+
+// Teacher Dashboard Components
+const TeacherHomePage = lazy(() => import('./components/TeacherDashboard/HomePage'));
+const ClassesManagement = lazy(() => import('./components/TeacherDashboard/ClassesManagement'));
+const StudentsManagement = lazy(() => import('./components/TeacherDashboard/StudentsManagement'));
+const MyClasses = lazy(() => import('./components/MyClasses'));
+const TeacherHomeworkDashboard = lazy(() => import('./components/teacherHomework/TeacherHomeworkDashboard'));
+const AttendanceManagement = lazy(() => import('./components/TeacherDashboard/AttendanceManagement'));
+
+// Common
+const NotFound = lazy(() => import('./components/common/NotFound'));
+
+
+// Fallback component for Suspense (can be a loading spinner)
+const LoadingFallback = () => (
+  <div style={{ padding: '20px', textAlign: 'center' }}>
+    <p>Loading content...</p>
+    {/* You'd typically use a proper spinner component here */}
+  </div>
+);
+
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="App">
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<TeacherLogin />} />
-            <Route path="/live-class/:classScheduleId" element={<LiveClassroom />} />
+          {/* 2. Wrap the Routes in Suspense */}
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<TeacherLogin />} />
+              <Route path="/live-class/:classScheduleId" element={<LiveClassroom />} />
 
-            {/* Protected Routes */}
-            <Route
-              path="/teacher"
-              element={
-                <ProtectedRoute>
-                  <TeacherLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<TeacherHomePage />} />
-              <Route path="classes" element={<ClassesManagement />} />
-              <Route path="students" element={<StudentsManagement />} />
-              <Route path="newclass" element={<MyClasses />} />
-            </Route>
+              {/* Protected Routes */}
+              <Route
+                path="/teacher"
+                element={
+                  <ProtectedRoute>
+                    {/* The TeacherLayout component itself is now lazy-loaded */}
+                    <TeacherLayout />
+                  </ProtectedRoute>
+                }
+              >
+                {/* Child Routes - components are also lazy-loaded */}
+                <Route index element={<TeacherHomePage />} />
+                <Route path="classes" element={<ClassesManagement />} />
+                <Route path="students" element={<StudentsManagement />} />
+                <Route path="newclass" element={<MyClasses />} />
+                <Route path="homework" element={<TeacherHomeworkDashboard />} />
+                <Route path="attendance" element={<AttendanceManagement />} />
 
-            {/* Redirect root "/" to "/teacher" */}
-            <Route path="/" element={<Navigate to="/teacher" replace />} />
+              </Route>
 
-            {/* Catch-all 404 page */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* Redirect root "/" to "/teacher" */}
+              <Route path="/" element={<Navigate to="/teacher" replace />} />
+
+              {/* Catch-all 404 page */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
 
           <Toaster
             position="top-right"

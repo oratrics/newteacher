@@ -1,4 +1,4 @@
-// components/TeacherDashboard/StudentsManagement.jsx - SIMPLIFIED VERSION
+// components/TeacherDashboard/StudentsManagement.jsx - COMPLETE FIXED VERSION
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   UserGroupIcon,
@@ -18,7 +18,10 @@ import {
   StarIcon,
   CalendarIcon,
   ClipboardDocumentCheckIcon,
-  AcademicCapIcon
+  AcademicCapIcon,
+  DocumentTextIcon,
+  PencilSquareIcon,
+  UserPlusIcon
 } from '@heroicons/react/24/outline';
 import {
   UserGroupIcon as UserGroupIconSolid,
@@ -29,11 +32,55 @@ import {
   StarIcon as StarIconSolid
 } from '@heroicons/react/24/solid';
 import { useNavigate } from 'react-router-dom';
-import { teacherAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-// Import attendance modal
-import AttendanceModal from './AttendanceModal';
+// API Service - Updated to work with your backend
+const API_BASE_URL =  'https://backend.oratrics.in/api';
+
+const apiCall = async (endpoint, options = {}) => {
+  const token = localStorage.getItem('teacherToken');
+  
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'API request failed');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
+const teacherAPI = {
+  getStudents: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiCall(`/newteachers/students${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getStudentDetails: (studentId) => {
+    return apiCall(`/newteachers/students/${studentId}`);
+  },
+
+  bulkStudentAction: (data) => {
+    return apiCall('/newteachers/students/bulk-action', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+};
 
 // === UTILITY COMPONENTS ===
 const ProgressBar = ({ percentage, color = 'blue', height = 'h-2' }) => {
@@ -72,6 +119,22 @@ const LoadingScreen = () => (
   </div>
 );
 
+const ErrorScreen = ({ error, onRetry }) => (
+  <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-100 flex items-center justify-center">
+    <div className="text-center max-w-md mx-auto p-6">
+      <ExclamationCircleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
+      <h2 className="text-2xl font-bold text-gray-900 mb-3">Unable to Load Students</h2>
+      <p className="text-gray-600 mb-6">{error}</p>
+      <button 
+        onClick={onRetry}
+        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Try Again
+      </button>
+    </div>
+  </div>
+);
+
 // === MAIN COMPONENT ===
 const StudentsManagement = () => {
   const navigate = useNavigate();
@@ -103,9 +166,7 @@ const StudentsManagement = () => {
   const [selectedStudents, setSelectedStudents] = useState(new Set());
 
   // Modals
-  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [showBulkActionModal, setShowBulkActionModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
 
   // View mode
   const [viewMode, setViewMode] = useState('grid');
@@ -127,53 +188,43 @@ const StudentsManagement = () => {
       if (filters.courseType) params.courseType = filters.courseType;
       if (filters.progressRange) params.progressRange = filters.progressRange;
       if (filters.status !== 'all') params.status = filters.status;
+      if (sortBy) params.sortBy = sortBy;
+      if (sortOrder) params.sortOrder = sortOrder;
       
       const response = await teacherAPI.getStudents(params);
       
       console.log('Students API response:', response);
       
-      // Handle both array response and object response formats
-      let studentsData = [];
-      let summaryData = {
-        totalStudents: 0,
-        activeStudents: 0,
-        needsAttentionStudents: 0,
-        atRiskStudents: 0,
-        averageProgress: 0,
-        averageAttendance: 0
-      };
-
-      if (Array.isArray(response)) {
-        studentsData = response;
-        summaryData = {
-          totalStudents: studentsData.length,
-          activeStudents: studentsData.filter(s => s.overallStatus === 'active').length,
-          needsAttentionStudents: studentsData.filter(s => s.overallStatus === 'needs-attention').length,
-          atRiskStudents: studentsData.filter(s => s.overallStatus === 'at-risk').length,
-          averageProgress: studentsData.length > 0 
-            ? Math.round(studentsData.reduce((sum, s) => sum + (s.averageProgress || 0), 0) / studentsData.length)
-            : 0,
-          averageAttendance: studentsData.length > 0 
-            ? Math.round(studentsData.reduce((sum, s) => sum + (s.attendanceRate || 0), 0) / studentsData.length)
-            : 0
+      if (response && response.success) {
+        const studentsData = response.data || [];
+        const summaryData = response.summary || {
+          totalStudents: 0,
+          activeStudents: 0,
+          needsAttentionStudents: 0,
+          atRiskStudents: 0,
+          averageProgress: 0,
+          averageAttendance: 0
         };
-      } else if (response && response.success) {
-        studentsData = response.data || [];
-        summaryData = response.summary || summaryData;
+
+        setStudents(studentsData);
+        setSummary(summaryData);
+        
+        if (showRefreshing) {
+          toast.success('Students refreshed successfully!');
+        }
       } else {
         const errorMsg = response?.message || 'Failed to load students';
         setError(errorMsg);
         toast.error(errorMsg);
         setStudents([]);
-        setSummary(summaryData);
-        return;
-      }
-
-      setStudents(studentsData);
-      setSummary(summaryData);
-      
-      if (showRefreshing) {
-        toast.success('Students refreshed successfully!');
+        setSummary({
+          totalStudents: 0,
+          activeStudents: 0,
+          needsAttentionStudents: 0,
+          atRiskStudents: 0,
+          averageProgress: 0,
+          averageAttendance: 0
+        });
       }
 
     } catch (err) {
@@ -194,7 +245,7 @@ const StudentsManagement = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filters]);
+  }, [filters, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchStudents();
@@ -207,69 +258,23 @@ const StudentsManagement = () => {
         courseType: '',
         progressRange: '',
         status: 'all'
-      })) {
+      }) || sortBy !== 'name' || sortOrder !== 'asc') {
         fetchStudents();
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [filters, fetchStudents]);
-
-  // === DATA PROCESSING ===
-  const filteredAndSortedStudents = useMemo(() => {
-    let result = [...students];
-
-    result.sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortBy) {
-        case 'name':
-          aValue = (a.name || '').toLowerCase();
-          bValue = (b.name || '').toLowerCase();
-          break;
-        case 'progress':
-          aValue = a.averageProgress || 0;
-          bValue = b.averageProgress || 0;
-          break;
-        case 'attendance':
-          aValue = a.attendanceRate || 0;
-          bValue = b.attendanceRate || 0;
-          break;
-        case 'topics':
-          aValue = a.topicCompletionRate || 0;
-          bValue = b.topicCompletionRate || 0;
-          break;
-        case 'status':
-          const statusOrder = { 'at-risk': 3, 'needs-attention': 2, 'active': 1 };
-          aValue = statusOrder[a.overallStatus] || 0;
-          bValue = statusOrder[b.overallStatus] || 0;
-          break;
-        case 'lastClass':
-          aValue = new Date(a.lastClassDate || 0);
-          bValue = new Date(b.lastClassDate || 0);
-          break;
-        default:
-          return 0;
-      }
-
-      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return result;
-  }, [students, sortBy, sortOrder]);
+  }, [filters, sortBy, sortOrder, fetchStudents]);
 
   // === ACTION HANDLERS ===
   const handleViewProgress = useCallback((studentId) => {
     console.log('Navigating to progress for student:', studentId);
-    navigate(`/teacher/students/${studentId}/progress`);
+    navigate(`/newteachers/students/${studentId}/progress`);
   }, [navigate]);
 
   const handleManageAttendance = useCallback((student) => {
     console.log('Opening attendance modal for student:', student.name);
-    setSelectedStudent(student);
-    setShowAttendanceModal(true);
-  }, []);
+    navigate(`/newteachers/attendance/${student._id}`);
+  }, [navigate]);
 
   const handleStudentAction = useCallback((studentId, action) => {
     const student = students.find(s => s._id === studentId);
@@ -288,7 +293,7 @@ const StudentsManagement = () => {
         handleManageAttendance(student);
         break;
       case 'view_details':
-        navigate(`/teacher/students/${studentId}/details`);
+        navigate(`/newteachers/students/${studentId}/details`);
         break;
       case 'send_message':
         if (student.email) {
@@ -330,17 +335,39 @@ const StudentsManagement = () => {
   }, []);
 
   const selectAllStudents = useCallback(() => {
-    if (selectedStudents.size === filteredAndSortedStudents.length) {
+    if (selectedStudents.size === students.length) {
       setSelectedStudents(new Set());
     } else {
-      setSelectedStudents(new Set(filteredAndSortedStudents.map(s => s._id)));
+      setSelectedStudents(new Set(students.map(s => s._id)));
     }
-  }, [selectedStudents.size, filteredAndSortedStudents]);
+  }, [selectedStudents.size, students]);
 
-  const handleModalSuccess = useCallback((message) => {
-    toast.success(message);
-    fetchStudents(true);
-  }, [fetchStudents]);
+  const handleBulkAction = useCallback(async (action) => {
+    if (selectedStudents.size === 0) {
+      toast.error('No students selected');
+      return;
+    }
+
+    try {
+      const studentIds = Array.from(selectedStudents);
+      const result = await teacherAPI.bulkStudentAction({
+        studentIds,
+        action,
+        data: {} // Add any additional data if needed
+      });
+
+      if (result.success) {
+        toast.success(`Bulk action "${action}" applied to ${selectedStudents.size} students`);
+        setSelectedStudents(new Set());
+        setShowBulkActionModal(false);
+      } else {
+        toast.error(result.message || 'Bulk action failed');
+      }
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      toast.error(error.message || 'Error performing bulk action');
+    }
+  }, [selectedStudents]);
 
   // === UTILITY FUNCTIONS ===
   const getStatusColor = (status) => {
@@ -523,7 +550,7 @@ const StudentsManagement = () => {
           {/* Content Header */}
           <ContentHeader
             title="Students"
-            count={filteredAndSortedStudents.length}
+            count={students.length}
             selectedCount={selectedStudents.size}
             sortBy={sortBy}
             sortOrder={sortOrder}
@@ -544,14 +571,15 @@ const StudentsManagement = () => {
 
           {/* Content */}
           <div className="p-6">
-            {filteredAndSortedStudents.length === 0 ? (
+            {students.length === 0 ? (
               <EmptyState 
                 hasFilters={!!(filters.search || filters.courseType || filters.progressRange || filters.status !== 'all')}
                 onClearFilters={clearFilters}
+                onNewEnrollment={() => navigate('/teacher/enroll-student')}
               />
             ) : (
               <ContentRenderer
-                students={filteredAndSortedStudents}
+                students={students}
                 viewMode={viewMode}
                 selectedStudents={selectedStudents}
                 onStudentAction={handleStudentAction}
@@ -564,35 +592,19 @@ const StudentsManagement = () => {
         </div>
       </div>
 
-      {/* Attendance Management Modal */}
-      {showAttendanceModal && selectedStudent && (
-        <AttendanceModal
-          student={selectedStudent}
-          onClose={() => {
-            setShowAttendanceModal(false);
-            setSelectedStudent(null);
-          }}
-          onSuccess={handleModalSuccess}
-        />
-      )}
-
       {/* Bulk Action Modal */}
       {showBulkActionModal && (
         <BulkActionModal
           selectedCount={selectedStudents.size}
           onClose={() => setShowBulkActionModal(false)}
-          onAction={(action) => {
-            toast.success(`Bulk action "${action}" applied to ${selectedStudents.size} students`);
-            setSelectedStudents(new Set());
-            setShowBulkActionModal(false);
-          }}
+          onAction={handleBulkAction}
         />
       )}
     </div>
   );
 };
 
-// === COMPONENT PARTS (same as before but simplified action buttons) ===
+// === COMPONENT PARTS ===
 const HeaderStatCard = ({ value, label, icon, urgent, className = "" }) => (
   <div className={`bg-white bg-opacity-20 backdrop-blur-sm rounded-xl px-4 py-3 relative transition-all duration-300 hover:bg-opacity-30 cursor-pointer ${className}`}>
     <div className={`text-2xl font-bold text-white ${urgent ? 'animate-pulse' : ''}`}>
@@ -887,13 +899,6 @@ const ContentRenderer = ({
   );
 };
 
-
-
-
-
-
-
-
 const StudentGridCard = ({ 
   student, 
   isSelected, 
@@ -1038,7 +1043,6 @@ const StudentGridCard = ({
   );
 };
 
-
 const StudentListCard = ({ student, isSelected, onToggleSelect, onAction, getStatusColor, getStatusIcon }) => {
   const StatusIcon = getStatusIcon(student.overallStatus);
   
@@ -1102,11 +1106,11 @@ const StudentListCard = ({ student, isSelected, onToggleSelect, onAction, getSta
                 <ClipboardDocumentCheckIcon className="h-5 w-5" />
               </button>
               <button
-                onClick={() => onAction(student._id, 'manage_enrollment')}
+                onClick={() => onAction(student._id, 'send_message')}
                 className="p-2 text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded-lg transition-colors"
-                title="Manage Enrollment"
+                title="Send Message"
               >
-                <PencilSquareIcon className="h-5 w-5" />
+                <EnvelopeIcon className="h-5 w-5" />
               </button>
             </div>
           </div>
